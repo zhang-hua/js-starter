@@ -5,8 +5,8 @@ const db = client.db('test');
 const insertresults = db.collection('insert_results');
 const queryresults = db.collection('query_results');
 
-function getCollection(bulkSize, randomVector) {
-    return db.collection(`vectors_${bulkSize}_${randomVector}`);
+function getCollection(vectorSize, vectorCount, bulkSize, randomVector) {
+    return db.collection(`vectors_${vectorSize}_${vectorCount}_${bulkSize}_${randomVector}`);
 }
 
 var randomVector = function(size) {
@@ -45,26 +45,33 @@ async function bulkInsertVectors(collection, vectorSize, vectorCount, bulkSize, 
     }
 }
 
-async function testBulkInsertion(vectorSize, vectorCount, bulkSizeSpace, randomVectorCountSpace)
+async function testVectorInsertion(vectorSizeDim, vectorCountDim, bulkSizeDim, randomVectorCountDim)
 {
-    for (var i = 0; i < bulkSizeSpace.length; i++)
+    for (var m = 0; m < vectorSizeDim.length; m++)
     {
-        for (var j = 0; j < randomVectorCountSpace.length; j++)
+        for (var n = 0; n < vectorCountDim.length; n++)
         {
-            var collection = getCollection(bulkSizeSpace[i], randomVectorCountSpace[j]);
-            const collections = await db.listCollections().toArray()
-            if (collections.find(c => c.name == collection.collectionName))
+            for (var i = 0; i < bulkSizeDim.length; i++)
             {
-                await collection.drop();
+                for (var j = 0; j < randomVectorCountDim.length; j++)
+                {
+                    var collection = getCollection(vectorSizeDim[m], vectorCountDim[n], bulkSizeDim[i], randomVectorCountDim[j]);
+                    const collections = await db.listCollections().toArray()
+                    if (collections.find(c => c.name == collection.collectionName))
+                    {
+                        await collection.drop();
+                    }
+                    var randomVectorCount = Math.min(vectorCountDim[n], randomVectorCountDim[j]);
+                    var bulkSize = Math.min(vectorCountDim[n], bulkSizeDim[i]);
+                    var startTime = new Date();
+                    await bulkInsertVectors(collection, vectorSizeDim[m], vectorCountDim[n], bulkSize, randomVectorCount);
+                    var endTime = new Date();
+                    await insertresults.insertOne({"collectionName": collection.collectionName, "vectorSize": vectorSizeDim[m], "vectorCount": vectorCountDim[n], "bulkSize": bulkSize, "randomVectorCount": randomVectorCount, "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime });
+                }
             }
-            var randomVectorCount = Math.min(vectorSize, randomVectorCountSpace[j]);
-            var bulkSize = Math.min(vectorSize, bulkSizeSpace[i]);
-            var startTime = new Date();
-            await bulkInsertVectors(collection, vectorSize, vectorCount, bulkSize, randomVectorCount);
-            var endTime = new Date();
-            await insertresults.insertOne({"collectionName": collection.collectionName, "vectorSize": vectorSize, "vectorCount": vectorCount, "bulkSize": bulkSize, "randomVectorCount": randomVectorCount, "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime });
         }
     }
+
 }
 
 async function queryCollection(collection, sorting, top)
@@ -85,7 +92,7 @@ async function queryCollection(collection, sorting, top)
                         }
                     }
                 },
-                {  
+                {
                     $sort: { cosine: -1 }
                 },
                 {   $limit: top   }
@@ -116,21 +123,27 @@ async function queryCollection(collection, sorting, top)
     return result;
 }
 
-async function testQuery(bulkSizeSpace, randomVectorCountSpace, sortingSpace, topSpace)
+async function testVectorQuery(vectorSizeDim, vectorCountDim, bulkSizeDim, randomVectorCountDim, sortingDim, topDim)
 {
-    for (var i = 0; i < bulkSizeSpace.length; i++)
+    for (var m = 0; m < vectorSizeDim.length; m++)
     {
-        for (var j = 0; j < randomVectorCountSpace.length; j++)
+        for (var n = 0; n < vectorCountDim.length; n++)
         {
-            var collection = getCollection(bulkSizeSpace[i], randomVectorCountSpace[j]);
-            for (var k = 0; k < sortingSpace.length; k++)
+            for (var i = 0; i < bulkSizeDim.length; i++)
             {
-                for (var l = 0; l < topSpace.length; l++)
+                for (var j = 0; j < randomVectorCountDim.length; j++)
                 {
-                    var startTime = new Date();
-                    var result = await queryCollection(collection, sortingSpace[k], topSpace[l]);
-                    var endTime = new Date();
-                    await queryresults.insertOne({"collectionName": collection.collectionName, "bulkSize": bulkSizeSpace[i], "randomVectorCount": randomVectorCountSpace[j], "sorting": sortingSpace[k], "top": topSpace[l],  "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime, "resultCount": result.length });
+                    var collection = getCollection(vectorSizeDim[m],vectorCountDim[n], bulkSizeDim[i], randomVectorCountDim[j]);
+                    for (var k = 0; k < sortingDim.length; k++)
+                    {
+                        for (var l = 0; l < topDim.length; l++)
+                        {
+                            var startTime = new Date();
+                            var result = await queryCollection(collection, sortingDim[k], topDim[l]);
+                            var endTime = new Date();
+                            await queryresults.insertOne({"collectionName": collection.collectionName, "bulkSize": bulkSizeDim[i], "randomVectorCount": randomVectorCountDim[j], "sorting": sortingDim[k], "top": topDim[l],  "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime, "resultCount": result.length });
+                        }
+                    }
                 }
             }
         }
@@ -140,14 +153,14 @@ async function testQuery(bulkSizeSpace, randomVectorCountSpace, sortingSpace, to
 async function main()  {
     try
     {
-        var bulkSizeSpace = [1, 10, 100, 1000, 10000];
-        var randomVectorCountSpace = [1, 10, 100, 1000, 100000];
-        var sortingSpace = [true, false];
-        var topSpace = [10, 100, 1000];
-        var vectorSize = 1024;
-        var vectorCount = 100000;
-        await testBulkInsertion(vectorSize, vectorCount, bulkSizeSpace, randomVectorCountSpace);
-        await testQuery(bulkSizeSpace, randomVectorCountSpace, sortingSpace, topSpace);
+        var bulkSizeDim = [1, 10, 100, 1000, 10000];
+        var randomVectorCountDim = [1, 10, 100, 1000, 100000];
+        var sortingDim = [true, false];
+        var topDim = [10, 100, 1000];
+        var vectorSizeDim = [1024];
+        var vectorCountDim = [100000];
+        await testVectorInsertion(vectorSizeDim, vectorCountDim, bulkSizeDim, randomVectorCountDim);
+        await testVectorQuery(vectorSizeDim, vectorCountDim, bulkSizeDim, randomVectorCountDim, sortingDim, topDim);
     }
     catch (error)
     {
