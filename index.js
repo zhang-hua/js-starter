@@ -74,56 +74,38 @@ async function testVectorInsertion(vectorSizeDim, vectorCountDim, bulkSizeDim, r
 
 }
 
-async function queryCollection(collection, sorting, top)
+async function queryCollection(collection, calculation, sorting, top)
 {
     var result = [];
-    if (sorting)
+    var docs = [];
+    if (calculation)
     {
-        result = await collection.aggregate(
-            [
-                {
-                    $project: {
-                        cosine: {
-                            $reduce: {
-                                input: { $range: [ 0, { $size: "$value" }] },
-                                initialValue: 0,
-                                in: { $add: [ "$$value", { $multiply: [ { $arrayElemAt: [ "$value", "$$this" ] }, { $arrayElemAt: [ "$$inputVector", "$$this" ] } ] } ] }
-                            }
-                        }
+        docs.push({
+            $project: {
+                cosine: {
+                    $reduce: {
+                        input: { $range: [ 0, { $size: "$value" }] },
+                        initialValue: 0,
+                        in: { $add: [ "$$value", { $multiply: [ { $arrayElemAt: [ "$value", "$$this" ] }, { $arrayElemAt: [ "$$inputVector", "$$this" ] } ] } ] }
                     }
-                },
-                {
-                    $sort: { cosine: -1 }
-                },
-                {   $limit: top   }
-            ],
-            { let: { inputVector: randomVector(1024) } }
-        ).toArray();
+                }
+            }
+        });
+
+        if (sorting)
+        {
+            docs.push({
+                $sort: { cosine: -1 }
+            });
+        }
     }
-    else
-    {
-        result = await collection.aggregate(
-            [
-                {
-                    $project: {
-                        cosine: {
-                            $reduce: {
-                                input: { $range: [ 0, { $size: "$value" }] },
-                                initialValue: 0,
-                                in: { $add: [ "$$value", { $multiply: [ { $arrayElemAt: [ "$value", "$$this" ] }, { $arrayElemAt: [ "$$inputVector", "$$this" ] } ] } ] }
-                            }
-                        }
-                    }
-                },
-                {   $limit: top   }
-            ],
-            { let: { inputVector: randomVector(1024) } }
-        ).toArray();
-    }
+
+    docs.push({   $limit: top   });
+    result = await collection.aggregate(docs, { let: { inputVector: randomVector(1024) } }).toArray();
     return result;
 }
 
-async function testVectorQuery(vectorSizeDim, vectorCountDim, bulkSizeDim, randomVectorCountDim, sortingDim, topDim)
+async function testVectorQuery(vectorSizeDim, vectorCountDim, bulkSizeDim, randomVectorCountDim, calculationDim, sortingDim, topDim)
 {
     for (var m = 0; m < vectorSizeDim.length; m++)
     {
@@ -138,10 +120,13 @@ async function testVectorQuery(vectorSizeDim, vectorCountDim, bulkSizeDim, rando
                     {
                         for (var l = 0; l < topDim.length; l++)
                         {
-                            var startTime = new Date();
-                            var result = await queryCollection(collection, sortingDim[k], topDim[l]);
-                            var endTime = new Date();
-                            await queryresults.insertOne({"collectionName": collection.collectionName, "bulkSize": bulkSizeDim[i], "randomVectorCount": randomVectorCountDim[j], "sorting": sortingDim[k], "top": topDim[l],  "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime, "resultCount": result.length });
+                            for (var m = 0; m < calculationDim.length; m++)
+                            {
+                                var startTime = new Date();
+                                var result = await queryCollection(collection, calculationDim[m], sortingDim[k], topDim[l]);
+                                var endTime = new Date();
+                                await queryresults.insertOne({"collectionName": collection.collectionName, "bulkSize": bulkSizeDim[i], "randomVectorCount": randomVectorCountDim[j], "calculation": calculationDim[m], "sorting": sortingDim[k], "top": topDim[l],  "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime, "resultCount": result.length });
+                            }
                         }
                     }
                 }
@@ -155,12 +140,13 @@ async function main()  {
     {
         var bulkSizeDim = [1, 10, 100, 1000, 10000];
         var randomVectorCountDim = [1, 10, 100, 1000, 100000];
+        var calculationDim = [true, false];
         var sortingDim = [true, false];
         var topDim = [10, 100, 1000];
         var vectorSizeDim = [1024];
         var vectorCountDim = [100000];
         await testVectorInsertion(vectorSizeDim, vectorCountDim, bulkSizeDim, randomVectorCountDim);
-        await testVectorQuery(vectorSizeDim, vectorCountDim, bulkSizeDim, randomVectorCountDim, sortingDim, topDim);
+        await testVectorQuery(vectorSizeDim, vectorCountDim, bulkSizeDim, randomVectorCountDim, calculationDim, sortingDim, topDim);
     }
     catch (error)
     {
