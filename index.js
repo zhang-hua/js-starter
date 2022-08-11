@@ -66,7 +66,9 @@ async function testVectorInsertion(vectorSizeDim, vectorCountDim, bulkSizeDim, r
                     var startTime = new Date();
                     await bulkInsertVectors(collection, vectorSizeDim[m], vectorCountDim[n], bulkSize, randomVectorCount);
                     var endTime = new Date();
-                    await insertresults.insertOne({"collectionName": collection.collectionName, "vectorSize": vectorSizeDim[m], "vectorCount": vectorCountDim[n], "bulkSize": bulkSize, "randomVectorCount": randomVectorCount, "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime });
+                    const idoc = {"collectionName": collection.collectionName, "vectorSize": vectorSizeDim[m], "vectorCount": vectorCountDim[n], "bulkSize": bulkSize, "randomVectorCount": randomVectorCount, "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime };
+                    console.debug("The insert result: ", idoc);
+                    await insertresults.insertOne(idoc);
                 }
             }
         }
@@ -125,7 +127,9 @@ async function testVectorQuery(vectorSizeDim, vectorCountDim, bulkSizeDim, rando
                                 var startTime = new Date();
                                 var result = await queryCollection(collection, calculationDim[x], sortingDim[k], topDim[l]);
                                 var endTime = new Date();
-                                await queryresults.insertOne({"collectionName": collection.collectionName, "bulkSize": bulkSizeDim[i], "randomVectorCount": randomVectorCountDim[j], "calculation": calculationDim[x], "sorting": sortingDim[k], "top": topDim[l],  "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime, "resultCount": result.length });
+                                const qdoc = {"collectionName": collection.collectionName, "bulkSize": bulkSizeDim[i], "randomVectorCount": randomVectorCountDim[j], "calculation": calculationDim[x], "sorting": sortingDim[k], "top": topDim[l],  "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime, "resultCount": result.length };
+                                console.debug("The query result: ", qdoc);
+                                await queryresults.insertOne(qdoc);
                             }
                         }
                     }
