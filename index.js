@@ -120,12 +120,12 @@ async function testVectorQuery(vectorSizeDim, vectorCountDim, bulkSizeDim, rando
                     {
                         for (var l = 0; l < topDim.length; l++)
                         {
-                            for (var m = 0; m < calculationDim.length; m++)
+                            for (var x = 0; x < calculationDim.length; x++)
                             {
                                 var startTime = new Date();
-                                var result = await queryCollection(collection, calculationDim[m], sortingDim[k], topDim[l]);
+                                var result = await queryCollection(collection, calculationDim[x], sortingDim[k], topDim[l]);
                                 var endTime = new Date();
-                                await queryresults.insertOne({"collectionName": collection.collectionName, "bulkSize": bulkSizeDim[i], "randomVectorCount": randomVectorCountDim[j], "calculation": calculationDim[m], "sorting": sortingDim[k], "top": topDim[l],  "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime, "resultCount": result.length });
+                                await queryresults.insertOne({"collectionName": collection.collectionName, "bulkSize": bulkSizeDim[i], "randomVectorCount": randomVectorCountDim[j], "calculation": calculationDim[x], "sorting": sortingDim[k], "top": topDim[l],  "startTime": startTime, "endTime": endTime, "durationMs": endTime - startTime, "resultCount": result.length });
                             }
                         }
                     }
