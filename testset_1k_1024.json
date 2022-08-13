@@ -1,0 +1,46 @@
+{
+    "vector": {
+        "sizeDim": [
+            10
+        ],
+        "countDim": [
+            1000
+        ]
+    },
+    "insertion": {
+        "recreateCollection": true,
+        "bulkSizeDim": [
+            1
+        ],
+        "randomVectorCountDim": [
+            1
+        ],
+        "outputCollection": "insert_results_1k",
+        "export": {
+            "overwrite": true,
+            "path": "insert_results_1k.csv"
+        }
+    },
+    "query": {
+        "calculationDim": [
+            true,
+            false
+        ],
+        "sortingDim": [
+            true,
+            false
+        ],
+        "topDim": [
+            10
+        ],
+        "outputCollection": "query_results_1k",
+        "export": {
+            "overwrite": true,
+            "path": "query_results_1k.csv"
+        }
+    },
+    "execution": {
+        "count": 1,
+        "intervalInSeconds": 6
+    }
+}
